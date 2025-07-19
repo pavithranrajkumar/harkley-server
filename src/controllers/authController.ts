@@ -57,18 +57,4 @@ export class AuthController {
       sendError(res, 'PROFILE_ERROR', message, 400);
     }
   }
-
-  /**
-   * Handle user logout
-   */
-  static async logout(req: Request, res: Response): Promise<void> {
-    try {
-      await AuthService.logout();
-
-      sendSuccess(res, null, 'Logout successful');
-    } catch (error) {
-      const message = getErrorMessage(error, 'Logout failed');
-      sendError(res, 'LOGOUT_ERROR', message, 400);
-    }
-  }
 }

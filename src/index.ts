@@ -3,11 +3,9 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
-import { testConnection } from './config/database';
-import { authenticateUser } from './middleware/auth';
 import { sendSuccess, sendError } from './utils/response';
 import { env } from './config/env';
-import authRoutes from './routes/auth';
+import routes from './routes';
 
 const app = express();
 const PORT = env.PORT;
@@ -31,52 +29,8 @@ app.get('/health', (req, res) => {
   );
 });
 
-// Basic API endpoint
-app.get('/api', (req, res) => {
-  sendSuccess(res, {
-    message: 'Harkley AI Server is running! 🎯',
-    version: '1.0.0',
-    endpoints: {
-      health: '/health',
-      api: '/api',
-      db: '/api/db-test',
-      auth: {
-        signup: 'POST /api/auth/signup',
-        login: 'POST /api/auth/login',
-        profile: 'GET /api/auth/profile (requires auth)',
-        logout: 'POST /api/auth/logout (requires auth)',
-      },
-      protected: '/api/protected (requires auth)',
-    },
-  });
-});
-
-// Database test endpoint
-app.get('/api/db-test', async (req, res) => {
-  try {
-    const isConnected = await testConnection();
-    sendSuccess(
-      res,
-      {
-        status: isConnected ? 'connected' : 'failed',
-      },
-      isConnected ? 'Database connection successful' : 'Database connection failed'
-    );
-  } catch {
-    sendError(res, 'DATABASE_ERROR', 'Database test failed', 500);
-  }
-});
-
-// Auth routes
-app.use('/api/auth', authRoutes);
-
-// Protected test endpoint (requires authentication)
-app.get('/api/protected', authenticateUser, (req, res) => {
-  sendSuccess(res, {
-    message: '🔐 Protected endpoint accessed successfully!',
-    user: req.user,
-  });
-});
+// API routes
+app.use('/api', routes);
 
 // Global error handling middleware
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {

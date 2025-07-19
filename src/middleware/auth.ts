@@ -1,16 +1,12 @@
 import { Request, Response, NextFunction } from 'express';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, User } from '@supabase/supabase-js';
 import { sendUnauthorized, sendInternalError } from '../utils/response';
 import { env } from '../config/env';
 
 // Extend Request interface to include user
 declare module 'express-serve-static-core' {
   interface Request {
-    user?: {
-      id: string;
-      email: string;
-      role?: string;
-    };
+    user: Partial<User> & { name?: string };
   }
 }
 
@@ -54,6 +50,7 @@ export const authenticateUser = async (req: Request, res: Response, next: NextFu
     req.user = {
       id: user.id,
       email: user.email || '',
+      name: user.user_metadata.name,
       role: user.role,
     };
 

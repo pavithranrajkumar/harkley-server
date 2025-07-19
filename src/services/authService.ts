@@ -117,20 +117,4 @@ export class AuthService {
       throw new Error(getErrorMessage(error, 'Failed to get user profile'));
     }
   }
-
-  /**
-   * Logout user
-   */
-  static async logout(): Promise<void> {
-    try {
-      // Sign out from Supabase
-      const { error } = await supabase.auth.signOut();
-
-      if (error) {
-        throw new Error(error.message);
-      }
-    } catch (error) {
-      throw new Error(getErrorMessage(error, 'Logout failed'));
-    }
-  }
 }

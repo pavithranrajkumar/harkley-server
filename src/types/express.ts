@@ -1,16 +1,14 @@
-import { Request } from "express";
-
-export interface AuthenticatedUser {
-  id: string;
-  email: string;
-  name?: string;
-  role?: string;
-}
+import { User } from '@supabase/supabase-js';
+import { Request } from 'express';
 
 export interface RequestWithUser extends Request {
-  user: AuthenticatedUser;
+  user: Partial<User> & { name?: string };
 }
 
 export const isAuthenticatedRequest = (req: Request): req is RequestWithUser => {
-  return req.user !== undefined && typeof req.user === "object" && req.user !== null && "id" in req.user;
+  return req.user !== undefined && typeof req.user === 'object' && req.user !== null && 'id' in req.user;
+};
+
+export const getUserId = (req: RequestWithUser): string => {
+  return req.user.id!;
 };

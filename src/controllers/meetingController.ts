@@ -1,11 +1,11 @@
 import { Request, Response } from 'express';
-import { RequestWithUser } from '../types/express';
+import { getUserId, RequestWithUser } from '../types/express';
 import { MeetingService } from '../services/meetingService';
 import { FileUploadService } from '../services/fileUploadService';
 import { sendSuccess, sendError, sendBadRequest } from '../utils/response';
 import { getErrorMessage } from '../utils/error';
-import { removeNullValues } from '../utils/common';
 import { getPaginationParams } from '../utils/pagination';
+import { removeNullValues } from '../utils/common';
 
 export class MeetingController {
   private static meetingService = new MeetingService();
@@ -17,7 +17,7 @@ export class MeetingController {
   static async createMeeting(req: RequestWithUser, res: Response): Promise<void> {
     try {
       const file = req.file;
-      const userId = req.user.id; // From auth middleware
+      const userId = getUserId(req);
 
       if (!file) {
         sendBadRequest(res, 'Recording file is required');
@@ -63,7 +63,7 @@ export class MeetingController {
   static async getMeeting(req: RequestWithUser, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const userId = req.user.id;
+      const userId = getUserId(req);
 
       const meeting = await this.meetingService.getMeetingById(id, userId);
 
@@ -84,7 +84,7 @@ export class MeetingController {
    */
   static async getMeetings(req: RequestWithUser, res: Response): Promise<void> {
     try {
-      const userId = req.user.id;
+      const userId = getUserId(req);
       const { status } = req.query;
 
       const { page, limit, offset } = getPaginationParams(req.query);
@@ -118,7 +118,7 @@ export class MeetingController {
   static async updateMeeting(req: RequestWithUser, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const userId = req.user.id;
+      const userId = getUserId(req);
       const { title, summary } = req.body;
 
       const updateData = removeNullValues({ title, summary });
@@ -143,7 +143,7 @@ export class MeetingController {
   static async deleteMeeting(req: RequestWithUser, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const userId = req.user.id;
+      const userId = getUserId(req);
 
       const success = await this.meetingService.deleteMeeting(id, userId);
 
@@ -164,7 +164,7 @@ export class MeetingController {
    */
   static async getMeetingStats(req: RequestWithUser, res: Response): Promise<void> {
     try {
-      const userId = req.user.id;
+      const userId = getUserId(req);
 
       const stats = await this.meetingService.getUserMeetingStats(userId);
 
