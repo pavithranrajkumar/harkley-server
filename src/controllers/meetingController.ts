@@ -1,8 +1,11 @@
 import { Request, Response } from 'express';
+import { RequestWithUser } from '../types/express';
 import { MeetingService } from '../services/meetingService';
 import { FileUploadService } from '../services/fileUploadService';
 import { sendSuccess, sendError, sendBadRequest } from '../utils/response';
 import { getErrorMessage } from '../utils/error';
+import { removeNullValues } from '../utils/common';
+import { getPaginationParams } from '../utils/pagination';
 
 export class MeetingController {
   private static meetingService = new MeetingService();
@@ -11,10 +14,10 @@ export class MeetingController {
   /**
    * Upload recording and create meeting
    */
-  static async createMeeting(req: Request, res: Response): Promise<void> {
+  static async createMeeting(req: RequestWithUser, res: Response): Promise<void> {
     try {
       const file = req.file;
-      const userId = (req as any).user.id; // From auth middleware
+      const userId = req.user.id; // From auth middleware
 
       if (!file) {
         sendBadRequest(res, 'Recording file is required');
@@ -24,8 +27,8 @@ export class MeetingController {
       // Upload file to Supabase storage
       const uploadResult = await this.fileUploadService.uploadFile(file, userId);
 
-      // Generate draft title (will be updated by Deepgram processing)
-      const draftTitle = `Meeting ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`;
+      // Generate simple generic title
+      const draftTitle = 'Untitled Meeting';
 
       // Create meeting record
       const meetingData = {
@@ -57,10 +60,10 @@ export class MeetingController {
   /**
    * Get meeting by ID with processing status
    */
-  static async getMeeting(req: Request, res: Response): Promise<void> {
+  static async getMeeting(req: RequestWithUser, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const userId = (req as any).user.id;
+      const userId = req.user.id;
 
       const meeting = await this.meetingService.getMeetingById(id, userId);
 
@@ -79,17 +82,15 @@ export class MeetingController {
   /**
    * Get all meetings for user
    */
-  static async getMeetings(req: Request, res: Response): Promise<void> {
+  static async getMeetings(req: RequestWithUser, res: Response): Promise<void> {
     try {
-      const userId = (req as any).user.id;
-      const { page = 1, limit = 10, status } = req.query;
+      const userId = req.user.id;
+      const { status } = req.query;
 
-      const pageNum = parseInt(page as string);
-      const limitNum = parseInt(limit as string);
-      const offset = (pageNum - 1) * limitNum;
+      const { page, limit, offset } = getPaginationParams(req.query);
 
       const result = await this.meetingService.getUserMeetings(userId, {
-        limit: limitNum,
+        limit,
         offset,
         status: status as string,
       });
@@ -99,9 +100,9 @@ export class MeetingController {
         {
           meetings: result.meetings,
           total: result.total,
-          page: pageNum,
-          limit: limitNum,
-          totalPages: Math.ceil(result.total / limitNum),
+          page,
+          limit,
+          totalPages: Math.ceil(result.total / limit),
         },
         'Meetings retrieved successfully'
       );
@@ -114,15 +115,13 @@ export class MeetingController {
   /**
    * Update meeting
    */
-  static async updateMeeting(req: Request, res: Response): Promise<void> {
+  static async updateMeeting(req: RequestWithUser, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const userId = (req as any).user.id;
+      const userId = req.user.id;
       const { title, summary } = req.body;
 
-      const updateData: any = {};
-      if (title !== undefined) updateData.title = title;
-      if (summary !== undefined) updateData.summary = summary;
+      const updateData = removeNullValues({ title, summary });
 
       const meeting = await this.meetingService.updateMeeting(id, userId, updateData);
 
@@ -141,10 +140,10 @@ export class MeetingController {
   /**
    * Delete meeting (soft delete)
    */
-  static async deleteMeeting(req: Request, res: Response): Promise<void> {
+  static async deleteMeeting(req: RequestWithUser, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const userId = (req as any).user.id;
+      const userId = req.user.id;
 
       const success = await this.meetingService.deleteMeeting(id, userId);
 
@@ -163,9 +162,9 @@ export class MeetingController {
   /**
    * Get meeting statistics
    */
-  static async getMeetingStats(req: Request, res: Response): Promise<void> {
+  static async getMeetingStats(req: RequestWithUser, res: Response): Promise<void> {
     try {
-      const userId = (req as any).user.id;
+      const userId = req.user.id;
 
       const stats = await this.meetingService.getUserMeetingStats(userId);
 

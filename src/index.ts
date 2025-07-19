@@ -6,8 +6,7 @@ import morgan from 'morgan';
 import { testConnection } from './config/database';
 import { authenticateUser } from './middleware/auth';
 import { sendSuccess, sendError } from './utils/response';
-import { env, isDevelopment } from './config/env';
-import { getErrorMessage } from './utils/error';
+import { env } from './config/env';
 import authRoutes from './routes/auth';
 
 const app = express();
