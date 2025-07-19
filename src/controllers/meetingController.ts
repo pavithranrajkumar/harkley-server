@@ -43,13 +43,14 @@ export class MeetingController {
       const meetingService = new MeetingService();
       const meeting = await meetingService.createMeeting(meetingData);
 
-      // Add transcription job to background queue
+      // Start transcription process
       const transcriptionService = new TranscriptionService();
       const transcriptionResponse = await transcriptionService.startTranscription(
         meeting.id,
         'https://qycrbgczamjkcrmlneqh.supabase.co/storage/v1/object/sign/meeting-recordings/users/55eb6849-3f56-40f6-8345-799f4c375eaf/meetings/Harkley%20Sample.webm?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV85YWM1YzhmZi1kN2IxLTQ1ZTQtYjlmOC0zZjUwYWQ3YTNhMzUiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtZWV0aW5nLXJlY29yZGluZ3MvdXNlcnMvNTVlYjY4NDktM2Y1Ni00MGY2LTgzNDUtNzk5ZjRjMzc1ZWFmL21lZXRpbmdzL0hhcmtsZXkgU2FtcGxlLndlYm0iLCJpYXQiOjE3NTI5NDkyOTIsImV4cCI6MTc1MzU1NDA5Mn0.uHK-VC6oxCc9S-2WNV7C1Ykzl_CPE8xYgzDUk2MI1cI'
       );
-      const { transcript } = await meetingService.processTranscriptionResults(meeting.id, transcriptionResponse);
+      const { transcript, duration } = await transcriptionService.processTranscriptionResults(meeting.id, transcriptionResponse);
+      await meetingService.updateMeeting(meeting.id, userId, { duration, status: 'processed' });
 
       // Extract action items using ChatGPT
       const openAIService = new OpenAIService();
@@ -72,28 +73,15 @@ export class MeetingController {
   }
 
   /**
-   * Get meeting by ID with selective loading options
+   * Get meeting by ID - clean and simple
    */
   static async getMeeting(req: RequestWithUser, res: Response): Promise<void> {
     try {
       const { id } = req.params;
       const userId = getUserId(req);
-      const {
-        includeTranscriptions = 'true',
-        includeActionItems = 'true',
-        includeChatSegments = 'false',
-        transcriptionLimit = '10',
-        chatSegmentLimit = '100',
-      } = req.query;
 
       const meetingService = new MeetingService();
-      const meeting = await meetingService.getMeetingById(id, userId, {
-        includeTranscriptions: includeTranscriptions === 'true',
-        includeActionItems: includeActionItems === 'true',
-        includeChatSegments: includeChatSegments === 'true',
-        transcriptionLimit: parseInt(transcriptionLimit as string),
-        chatSegmentLimit: parseInt(chatSegmentLimit as string),
-      });
+      const meeting = await meetingService.getMeetingById(id, userId);
 
       if (!meeting) {
         sendError(res, 'NOT_FOUND', 'Meeting not found', 404);
@@ -108,12 +96,12 @@ export class MeetingController {
   }
 
   /**
-   * Get all meetings for user with selective loading
+   * Get all meetings for user - clean and simple
    */
   static async getMeetings(req: RequestWithUser, res: Response): Promise<void> {
     try {
       const userId = getUserId(req);
-      const { status, includeTranscriptions = 'false', includeActionItems = 'false' } = req.query;
+      const { status } = req.query;
 
       const { page, limit, offset } = getPaginationParams(req.query);
 
@@ -122,8 +110,6 @@ export class MeetingController {
         limit,
         offset,
         status: status as string,
-        includeTranscriptions: includeTranscriptions === 'true',
-        includeActionItems: includeActionItems === 'true',
       });
 
       sendSuccess(
@@ -140,89 +126,6 @@ export class MeetingController {
     } catch (error) {
       const message = getErrorMessage(error, 'Failed to get meetings');
       sendError(res, 'MEETINGS_GET_ERROR', message, 400);
-    }
-  }
-
-  /**
-   * Get light meeting list (dashboard view) - optimized for performance
-   */
-  static async getLightMeetings(req: RequestWithUser, res: Response): Promise<void> {
-    try {
-      const userId = getUserId(req);
-      const { status } = req.query;
-      const { page, limit, offset } = getPaginationParams(req.query);
-
-      const meetingService = new MeetingService();
-      const result = await meetingService.getLightMeetingList(userId, {
-        limit,
-        offset,
-        status: status as string,
-      });
-
-      sendSuccess(
-        res,
-        {
-          meetings: result.meetings,
-          total: result.total,
-          page,
-          limit,
-          totalPages: Math.ceil(result.total / limit),
-        },
-        'Light meetings retrieved successfully'
-      );
-    } catch (error) {
-      const message = getErrorMessage(error, 'Failed to get light meetings');
-      sendError(res, 'LIGHT_MEETINGS_GET_ERROR', message, 400);
-    }
-  }
-
-  /**
-   * Get meeting with transcriptions only
-   */
-  static async getMeetingTranscriptions(req: RequestWithUser, res: Response): Promise<void> {
-    try {
-      const { id } = req.params;
-      const userId = getUserId(req);
-      const { includeChatSegments = 'false', chatSegmentLimit = '100' } = req.query;
-
-      const meetingService = new MeetingService();
-      const meeting = await meetingService.getMeetingWithTranscriptions(id, userId, {
-        includeChatSegments: includeChatSegments === 'true',
-        chatSegmentLimit: parseInt(chatSegmentLimit as string),
-      });
-
-      if (!meeting) {
-        sendError(res, 'NOT_FOUND', 'Meeting not found', 404);
-        return;
-      }
-
-      sendSuccess(res, meeting, 'Meeting transcriptions retrieved successfully');
-    } catch (error) {
-      const message = getErrorMessage(error, 'Failed to get meeting transcriptions');
-      sendError(res, 'MEETING_TRANSCRIPTIONS_ERROR', message, 400);
-    }
-  }
-
-  /**
-   * Get meeting with action items only
-   */
-  static async getMeetingActionItems(req: RequestWithUser, res: Response): Promise<void> {
-    try {
-      const { id } = req.params;
-      const userId = getUserId(req);
-
-      const meetingService = new MeetingService();
-      const meeting = await meetingService.getMeetingWithActionItems(id, userId);
-
-      if (!meeting) {
-        sendError(res, 'NOT_FOUND', 'Meeting not found', 404);
-        return;
-      }
-
-      sendSuccess(res, meeting, 'Meeting action items retrieved successfully');
-    } catch (error) {
-      const message = getErrorMessage(error, 'Failed to get meeting action items');
-      sendError(res, 'MEETING_ACTION_ITEMS_ERROR', message, 400);
     }
   }
 
@@ -284,7 +187,7 @@ export class MeetingController {
 
       const meetingService = new MeetingService();
       const stats = await meetingService.getUserMeetingStats(userId);
-
+      console.log({ stats });
       sendSuccess(res, stats, 'Meeting statistics retrieved successfully');
     } catch (error) {
       const message = getErrorMessage(error, 'Failed to get meeting statistics');

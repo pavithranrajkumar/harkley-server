@@ -6,18 +6,17 @@ import { Meeting } from './Meeting';
 @Index('IDX_action_items_meeting_id', ['meetingId'])
 @Index('IDX_action_items_status', ['status'])
 @Index('IDX_action_items_priority', ['priority'])
+@Index('IDX_action_items_speaker', ['speaker'])
+@Index('IDX_action_items_created_by', ['createdBy'])
 export class ActionItem extends BaseEntity {
   @Column({ name: 'meeting_id' })
   meetingId!: string;
-
-  @Column({ name: 'speaker_number', nullable: true })
-  speakerNumber!: number;
 
   @Column({ type: 'text' })
   description!: string;
 
   @Column({ nullable: true })
-  assignee!: string;
+  speaker!: string;
 
   @Column({ name: 'due_date', nullable: true })
   dueDate!: Date;
@@ -27,6 +26,9 @@ export class ActionItem extends BaseEntity {
 
   @Column({ default: 'pending' })
   status!: string;
+
+  @Column({ name: 'created_by' })
+  createdBy!: string;
 
   @ManyToOne(() => Meeting, (meeting) => meeting.actionItems, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'meeting_id' })

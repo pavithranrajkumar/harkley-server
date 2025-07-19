@@ -1,4 +1,4 @@
-import { Entity, Column, OneToMany, Index } from 'typeorm';
+import { Entity, Column, OneToMany, OneToOne, Index } from 'typeorm';
 import { BaseEntity } from './BaseEntity';
 import { Transcription } from './Transcription';
 import { ActionItem } from './ActionItem';
@@ -24,14 +24,14 @@ export class Meeting extends BaseEntity {
   @Column({ nullable: true })
   summary!: string;
 
-  @Column({ default: 'active' })
+  @Column({ default: 'processing' })
   status!: string;
 
   @Column({ name: 'user_id' })
   userId!: string;
 
-  @OneToMany(() => Transcription, (transcription) => transcription.meeting, { cascade: true })
-  transcriptions!: Transcription[];
+  @OneToOne(() => Transcription, (transcription) => transcription.meeting, { cascade: true })
+  transcription!: Transcription;
 
   @OneToMany(() => ActionItem, (actionItem) => actionItem.meeting, { cascade: true })
   actionItems!: ActionItem[];

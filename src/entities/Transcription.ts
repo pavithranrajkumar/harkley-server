@@ -1,4 +1,4 @@
-import { Entity, Column, ManyToOne, JoinColumn, OneToMany, Index } from 'typeorm';
+import { Entity, Column, OneToOne, JoinColumn, OneToMany, Index } from 'typeorm';
 import { BaseEntity } from './BaseEntity';
 import { Meeting } from './Meeting';
 import { ChatSegment } from './ChatSegment';
@@ -28,7 +28,7 @@ export class Transcription extends BaseEntity {
   @Column({ name: 'word_count', nullable: true })
   wordCount!: number;
 
-  @ManyToOne(() => Meeting, (meeting) => meeting.transcriptions, { onDelete: 'CASCADE' })
+  @OneToOne(() => Meeting, (meeting) => meeting.transcription, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'meeting_id' })
   meeting!: Meeting;
 

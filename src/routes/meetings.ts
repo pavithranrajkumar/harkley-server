@@ -25,13 +25,6 @@ const upload = multer({
 // Routes
 router.post('/', authenticateUser, upload.single('recording'), MeetingController.createMeeting);
 router.get('/stats', authenticateUser, MeetingController.getMeetingStats);
-
-// Optimized routes for better performance
-router.get('/light', authenticateUser, MeetingController.getLightMeetings); // Fast dashboard view
-router.get('/:id/transcriptions', authenticateUser, validateIdParam('id'), MeetingController.getMeetingTranscriptions);
-router.get('/:id/action-items', authenticateUser, validateIdParam('id'), MeetingController.getMeetingActionItems);
-
-// Standard routes with query optimization
 router.get('/:id', authenticateUser, validateIdParam('id'), MeetingController.getMeeting);
 router.get('/', authenticateUser, MeetingController.getMeetings);
 router.put('/:id', authenticateUser, validateIdParam('id'), MeetingController.updateMeeting);
