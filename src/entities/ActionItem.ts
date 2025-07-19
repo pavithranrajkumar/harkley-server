@@ -1,11 +1,9 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { BaseEntity } from './BaseEntity';
 import { Meeting } from './Meeting';
 
 @Entity('action_items')
-export class ActionItem {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
-
+export class ActionItem extends BaseEntity {
   @Column({ name: 'meeting_id' })
   meetingId!: string;
 
@@ -26,12 +24,6 @@ export class ActionItem {
 
   @Column({ default: 'pending' })
   status!: string;
-
-  @CreateDateColumn({ name: 'created_at' })
-  createdAt!: Date;
-
-  @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt!: Date;
 
   @ManyToOne(() => Meeting, (meeting) => meeting.actionItems, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'meeting_id' })

@@ -1,12 +1,10 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany } from 'typeorm';
+import { Entity, Column, OneToMany } from 'typeorm';
+import { BaseEntity } from './BaseEntity';
 import { Transcription } from './Transcription';
 import { ActionItem } from './ActionItem';
 
 @Entity('meetings')
-export class Meeting {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
-
+export class Meeting extends BaseEntity {
   @Column()
   title!: string;
 
@@ -27,12 +25,6 @@ export class Meeting {
 
   @Column({ name: 'user_id' })
   userId!: string;
-
-  @CreateDateColumn({ name: 'created_at' })
-  createdAt!: Date;
-
-  @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt!: Date;
 
   @OneToMany(() => Transcription, (transcription) => transcription.meeting, { cascade: true })
   transcriptions!: Transcription[];

@@ -1,12 +1,10 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
+import { Entity, Column, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
+import { BaseEntity } from './BaseEntity';
 import { Meeting } from './Meeting';
 import { ChatSegment } from './ChatSegment';
 
 @Entity('transcriptions')
-export class Transcription {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
-
+export class Transcription extends BaseEntity {
   @Column({ name: 'meeting_id' })
   meetingId!: string;
 
@@ -27,12 +25,6 @@ export class Transcription {
 
   @Column({ name: 'word_count', nullable: true })
   wordCount!: number;
-
-  @CreateDateColumn({ name: 'created_at' })
-  createdAt!: Date;
-
-  @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt!: Date;
 
   @ManyToOne(() => Meeting, (meeting) => meeting.transcriptions, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'meeting_id' })

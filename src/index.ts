@@ -79,10 +79,10 @@ app.get('/api/protected', authenticateUser, (req, res) => {
   });
 });
 
-// Error handling middleware
-app.use((err: Error, req: express.Request, res: express.Response) => {
+// Global error handling middleware
+app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
   console.error('Error:', err);
-  sendError(res, 'INTERNAL_ERROR', isDevelopment() ? getErrorMessage(err) : 'Something went wrong', 500);
+  sendError(res, 'INTERNAL_ERROR', 'Something went wrong', 500);
 });
 
 // 404 handler
