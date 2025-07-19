@@ -1,0 +1,584 @@
+{
+  "info": {
+    "_postman_id": "harkley-ai-meetings-api",
+    "name": "Harkley AI - Meetings API",
+    "description": "Complete API collection for testing the Harkley AI Meetings module. Includes authentication, file uploads, and all CRUD operations.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "harkley-ai"
+  },
+  "item": [
+    {
+      "name": "🔐 Authentication",
+      "item": [
+        {
+          "name": "Login/Get Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// This is a placeholder for Supabase authentication",
+                  "// You'll need to implement this based on your Supabase setup",
+                  "",
+                  "// Example: Get token from Supabase Auth",
+                  "// const response = await fetch('https://your-project.supabase.co/auth/v1/token?grant_type=password', {",
+                  "//   method: 'POST',",
+                  "//   headers: {",
+                  "//     'Content-Type': 'application/json',",
+                  "//     'apikey': '{{supabase_anon_key}}'",
+                  "//   },",
+                  "//   body: JSON.stringify({",
+                  "//     email: '{{user_email}}',",
+                  "//     password: '{{user_password}}'",
+                  "//   })",
+                  "// });",
+                  "",
+                  "// const data = await response.json();",
+                  "// pm.environment.set('auth_token', data.access_token);",
+                  "",
+                  "console.log('Please implement Supabase authentication to get a valid token');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{user_email}}\",\n  \"password\": \"{{user_password}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Login to get authentication token. This endpoint needs to be implemented based on your Supabase authentication setup."
+          },
+          "response": []
+        }
+      ],
+      "description": "Authentication endpoints for getting access tokens"
+    },
+    {
+      "name": "📊 Health Check",
+      "item": [
+        {
+          "name": "Server Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/health",
+              "host": ["{{base_url}}"],
+              "path": ["health"]
+            },
+            "description": "Check if the server is running and healthy"
+          },
+          "response": []
+        }
+      ],
+      "description": "Health check endpoints to verify server status"
+    },
+    {
+      "name": "🎥 Meetings",
+      "item": [
+        {
+          "name": "Create Meeting (Upload Recording)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Test successful meeting creation",
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    ",
+                  "    pm.test('Status code is 201', function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "    ",
+                  "    pm.test('Response has meetingId', function () {",
+                  "        pm.expect(response.data).to.have.property('meetingId');",
+                  "    });",
+                  "    ",
+                  "    pm.test('Response has fileUrl', function () {",
+                  "        pm.expect(response.data).to.have.property('fileUrl');",
+                  "    });",
+                  "    ",
+                  "    pm.test('Response has processingStatus', function () {",
+                  "        pm.expect(response.data).to.have.property('processingStatus');",
+                  "    });",
+                  "    ",
+                  "    // Store meeting ID for other tests",
+                  "    if (response.data.meetingId) {",
+                  "        pm.environment.set('meeting_id', response.data.meetingId);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "description": "Authentication token from Supabase"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "recording",
+                  "type": "file",
+                  "src": [],
+                  "description": "WebM audio/video file (max 50MB)"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/meetings",
+              "host": ["{{base_url}}"],
+              "path": ["meetings"]
+            },
+            "description": "Upload a WebM recording file to create a new meeting. The file will be processed for transcription and analysis."
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Meetings",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Test successful meetings retrieval",
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    ",
+                  "    pm.test('Status code is 200', function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    ",
+                  "    pm.test('Response has meetings array', function () {",
+                  "        pm.expect(response.data).to.have.property('meetings');",
+                  "        pm.expect(response.data.meetings).to.be.an('array');",
+                  "    });",
+                  "    ",
+                  "    pm.test('Response has pagination info', function () {",
+                  "        pm.expect(response.data).to.have.property('total');",
+                  "        pm.expect(response.data).to.have.property('page');",
+                  "        pm.expect(response.data).to.have.property('limit');",
+                  "        pm.expect(response.data).to.have.property('totalPages');",
+                  "    });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/meetings?page=1&limit=10&status=all",
+              "host": ["{{base_url}}"],
+              "path": ["meetings"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Page number (default: 1)"
+                },
+                {
+                  "key": "limit",
+                  "value": "10",
+                  "description": "Items per page (default: 10, max: 100)"
+                },
+                {
+                  "key": "status",
+                  "value": "all",
+                  "description": "Filter by status: 'all', 'pending', 'processing', 'completed', 'failed'"
+                }
+              ]
+            },
+            "description": "Get all meetings for the authenticated user with pagination and optional status filtering"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Meeting by ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Test successful meeting retrieval",
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    ",
+                  "    pm.test('Status code is 200', function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    ",
+                  "    pm.test('Response has meeting data', function () {",
+                  "        pm.expect(response.data).to.have.property('id');",
+                  "        pm.expect(response.data).to.have.property('title');",
+                  "        pm.expect(response.data).to.have.property('userId');",
+                  "    });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/meetings/{{meeting_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["meetings", "{{meeting_id}}"]
+            },
+            "description": "Get a specific meeting by ID. The meeting ID should be obtained from the create meeting response."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Meeting",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Test successful meeting update",
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    ",
+                  "    pm.test('Status code is 200', function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    ",
+                  "    pm.test('Response has updated meeting data', function () {",
+                  "        pm.expect(response.data).to.have.property('id');",
+                  "        pm.expect(response.data).to.have.property('title');",
+                  "    });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Updated Meeting Title\",\n  \"summary\": \"This is an updated summary of the meeting\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/meetings/{{meeting_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["meetings", "{{meeting_id}}"]
+            },
+            "description": "Update meeting details like title and summary. Only the meeting owner can update their meetings."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Meeting Statistics",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Test successful stats retrieval",
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    ",
+                  "    pm.test('Status code is 200', function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    ",
+                  "    pm.test('Response has statistics data', function () {",
+                  "        pm.expect(response.data).to.be.an('object');",
+                  "    });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/meetings/stats",
+              "host": ["{{base_url}}"],
+              "path": ["meetings", "stats"]
+            },
+            "description": "Get meeting statistics for the authenticated user (total meetings, processing status counts, etc.)"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Meeting",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Test successful meeting deletion",
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    ",
+                  "    pm.test('Status code is 200', function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    ",
+                  "    pm.test('Response indicates successful deletion', function () {",
+                  "        pm.expect(response.message).to.include('deleted successfully');",
+                  "    });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/meetings/{{meeting_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["meetings", "{{meeting_id}}"]
+            },
+            "description": "Delete a meeting (soft delete). Only the meeting owner can delete their meetings."
+          },
+          "response": []
+        }
+      ],
+      "description": "All meeting-related endpoints including CRUD operations and statistics"
+    },
+    {
+      "name": "🧪 Error Testing",
+      "item": [
+        {
+          "name": "Create Meeting - No File",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Test error handling",
+                  "pm.test('Status code is 400', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test('Error message indicates missing file', function () {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.message).to.include('Recording file is required');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": []
+            },
+            "url": {
+              "raw": "{{base_url}}/meetings",
+              "host": ["{{base_url}}"],
+              "path": ["meetings"]
+            },
+            "description": "Test error handling when no file is provided"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Meeting - Invalid ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Test error handling",
+                  "pm.test('Status code is 400 or 404', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([400, 404]);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/meetings/invalid-id",
+              "host": ["{{base_url}}"],
+              "path": ["meetings", "invalid-id"]
+            },
+            "description": "Test error handling with invalid meeting ID"
+          },
+          "response": []
+        },
+        {
+          "name": "Unauthorized Access",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Test unauthorized access",
+                  "pm.test('Status code is 401', function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});",
+                  "",
+                  "pm.test('Error message indicates unauthorized', function () {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.message).to.include('unauthorized');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/meetings",
+              "host": ["{{base_url}}"],
+              "path": ["meetings"]
+            },
+            "description": "Test unauthorized access without authentication token"
+          },
+          "response": []
+        }
+      ],
+      "description": "Error testing scenarios to verify proper error handling"
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Pre-request script to set up common headers",
+          "console.log('Request URL:', pm.request.url.toString());",
+          "console.log('Request Method:', pm.request.method);"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Global test script",
+          "pm.test('Response time is less than 5000ms', function () {",
+          "    pm.expect(pm.response.responseTime).to.be.below(5000);",
+          "});",
+          "",
+          "pm.test('Response has valid JSON', function () {",
+          "    pm.response.to.be.json;",
+          "});"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3001/api",
+      "type": "string",
+      "description": "Base URL for the Harkley AI API"
+    },
+    {
+      "key": "auth_token",
+      "value": "your_supabase_jwt_token_here",
+      "type": "string",
+      "description": "JWT token from Supabase authentication"
+    },
+    {
+      "key": "meeting_id",
+      "value": "",
+      "type": "string",
+      "description": "Meeting ID obtained from create meeting response"
+    },
+    {
+      "key": "user_email",
+      "value": "test@example.com",
+      "type": "string",
+      "description": "User email for authentication"
+    },
+    {
+      "key": "user_password",
+      "value": "your_password",
+      "type": "string",
+      "description": "User password for authentication"
+    },
+    {
+      "key": "supabase_anon_key",
+      "value": "your_supabase_anon_key",
+      "type": "string",
+      "description": "Supabase anonymous key for authentication"
+    }
+  ]
+}

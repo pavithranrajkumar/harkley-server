@@ -12,39 +12,55 @@ declare module 'express-serve-static-core' {
 
 export const authenticateUser = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
+    console.log('🔐 Starting authentication...');
+
     // Get token from Authorization header
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.log('❌ No valid authorization header found');
       sendUnauthorized(res, 'No valid authorization header found');
       return;
     }
 
     const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+    console.log('🔑 Token extracted, length:', token.length);
 
     // Create Supabase client
     const supabaseUrl = env.SUPABASE_URL;
     const supabaseAnonKey = env.SUPABASE_ANON_KEY;
 
     if (!supabaseUrl || !supabaseAnonKey) {
-      console.error('Supabase configuration missing');
+      console.error('❌ Supabase configuration missing');
       sendInternalError(res, 'Authentication configuration error');
       return;
     }
 
+    console.log('🏗️ Creating Supabase client...');
     const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-    // Use Supabase Auth to verify the token
+    // Add timeout to prevent hanging
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Authentication timeout')), 10000); // 10 second timeout
+    });
+
+    console.log('🔍 Verifying token with Supabase...');
+
+    // Use Supabase Auth to verify the token with timeout
+    const authPromise = supabase.auth.getUser(token);
+
     const {
       data: { user },
       error,
-    } = await supabase.auth.getUser(token);
+    } = (await Promise.race([authPromise, timeoutPromise])) as any;
 
     if (error || !user) {
-      console.error('Supabase auth error:', error);
+      console.error('❌ Supabase auth error:', error);
       sendUnauthorized(res, 'Invalid or expired token');
       return;
     }
+
+    console.log('✅ Authentication successful for user:', user.email);
 
     // Attach user info to request
     req.user = {
@@ -56,8 +72,12 @@ export const authenticateUser = async (req: Request, res: Response, next: NextFu
 
     next();
   } catch (error) {
-    console.error('Authentication error:', error);
-    sendInternalError(res, 'Authentication failed');
+    console.error('❌ Authentication error:', error);
+    if (error instanceof Error && error.message === 'Authentication timeout') {
+      sendInternalError(res, 'Authentication timeout - please try again');
+    } else {
+      sendInternalError(res, 'Authentication failed');
+    }
   }
 };
 

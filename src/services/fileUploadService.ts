@@ -58,7 +58,7 @@ export class FileUploadService {
     const filePath = this.generateFilePath(userId, file.originalname);
 
     // Upload to Supabase storage
-    const { data, error } = await supabase.storage.from(this.BUCKET_NAME).upload(filePath, file.buffer, {
+    const { error } = await supabase.storage.from(this.BUCKET_NAME).upload(filePath, file.buffer, {
       contentType: file.mimetype,
       cacheControl: '3600',
       upsert: false, // Prevent overwriting existing files

@@ -5,10 +5,22 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import { sendSuccess, sendError } from './utils/response';
 import { env } from './config/env';
+import { AppDataSource } from './config/ormconfig';
 import routes from './routes';
 
 const app = express();
 const PORT = env.PORT;
+
+// Initialize TypeORM database connection
+const initializeDatabase = async () => {
+  try {
+    await AppDataSource.initialize();
+    console.log('✅ TypeORM database connection established');
+  } catch (error) {
+    console.error('❌ TypeORM database connection failed:', error);
+    process.exit(1);
+  }
+};
 
 // Middleware
 app.use(helmet());
@@ -44,10 +56,28 @@ app.use((req, res) => {
 });
 
 // Start server
-app.listen(PORT, () => {
-  console.log(`🚀 Harkley AI Server running on port ${PORT}`);
-  console.log(`📊 Environment: ${env.NODE_ENV}`);
-  console.log(`🔗 Health check: http://localhost:${PORT}/health`);
+const startServer = async () => {
+  // Initialize database first
+  await initializeDatabase();
+
+  // Start the server
+  app.listen(PORT, () => {
+    console.log(`🚀 Harkley AI Server running on port ${PORT}`);
+    console.log(`📊 Environment: ${env.NODE_ENV}`);
+    console.log(`🔗 Health check: http://localhost:${PORT}/health`);
+  });
+};
+
+startServer().catch((error) => {
+  console.error('❌ Failed to start server:', error);
+  process.exit(1);
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err);
+});
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection:', reason);
 });
 
 export default app;

@@ -8,9 +8,6 @@ import { getPaginationParams } from '../utils/pagination';
 import { removeNullValues } from '../utils/common';
 
 export class MeetingController {
-  private static meetingService = new MeetingService();
-  private static fileUploadService = new FileUploadService();
-
   /**
    * Upload recording and create meeting
    */
@@ -25,7 +22,8 @@ export class MeetingController {
       }
 
       // Upload file to Supabase storage
-      const uploadResult = await this.fileUploadService.uploadFile(file, userId);
+      const fileUploadService = new FileUploadService();
+      const uploadResult = await fileUploadService.uploadFile(file, userId);
 
       // Generate simple generic title
       const draftTitle = 'Untitled Meeting';
@@ -38,7 +36,8 @@ export class MeetingController {
         userId,
       };
 
-      const meeting = await this.meetingService.createMeeting(meetingData);
+      const meetingService = new MeetingService();
+      const meeting = await meetingService.createMeeting(meetingData);
 
       sendSuccess(
         res,
@@ -65,7 +64,8 @@ export class MeetingController {
       const { id } = req.params;
       const userId = getUserId(req);
 
-      const meeting = await this.meetingService.getMeetingById(id, userId);
+      const meetingService = new MeetingService();
+      const meeting = await meetingService.getMeetingById(id, userId);
 
       if (!meeting) {
         sendError(res, 'NOT_FOUND', 'Meeting not found', 404);
@@ -89,7 +89,8 @@ export class MeetingController {
 
       const { page, limit, offset } = getPaginationParams(req.query);
 
-      const result = await this.meetingService.getUserMeetings(userId, {
+      const meetingService = new MeetingService();
+      const result = await meetingService.getUserMeetings(userId, {
         limit,
         offset,
         status: status as string,
@@ -123,7 +124,8 @@ export class MeetingController {
 
       const updateData = removeNullValues({ title, summary });
 
-      const meeting = await this.meetingService.updateMeeting(id, userId, updateData);
+      const meetingService = new MeetingService();
+      const meeting = await meetingService.updateMeeting(id, userId, updateData);
 
       if (!meeting) {
         sendError(res, 'NOT_FOUND', 'Meeting not found', 404);
@@ -145,7 +147,8 @@ export class MeetingController {
       const { id } = req.params;
       const userId = getUserId(req);
 
-      const success = await this.meetingService.deleteMeeting(id, userId);
+      const meetingService = new MeetingService();
+      const success = await meetingService.deleteMeeting(id, userId);
 
       if (!success) {
         sendError(res, 'NOT_FOUND', 'Meeting not found', 404);
@@ -166,7 +169,8 @@ export class MeetingController {
     try {
       const userId = getUserId(req);
 
-      const stats = await this.meetingService.getUserMeetingStats(userId);
+      const meetingService = new MeetingService();
+      const stats = await meetingService.getUserMeetingStats(userId);
 
       sendSuccess(res, stats, 'Meeting statistics retrieved successfully');
     } catch (error) {
