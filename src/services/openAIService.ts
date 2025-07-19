@@ -2,110 +2,112 @@ import OpenAI from 'openai';
 import { env } from '../config/env';
 import { AppDataSource } from '../config/ormconfig';
 import { ActionItem } from '../entities/ActionItem';
+import { ActionItemsResponse, ActionItemUpdateData } from '../types/actionItem';
+import { OpenAIConfig, PromptTemplate, SummaryResponse } from '../types/openai';
+import { MeetingService } from './meetingService';
 
-// Types for better type safety
-interface ActionItemData {
-  description: string;
-  priority: 'high' | 'medium' | 'low';
-  speaker?: string;
-  assignee?: string;
-}
+const OPENAI_CONFIG = {
+  model: 'gpt-3.5-turbo',
+  temperature: 0.3,
+  maxTokens: 1000,
+  summaryMaxTokens: 400,
+};
 
-interface ActionItemsResponse {
-  actionItems: ActionItemData[];
-}
+const TRANSCRIPT_THRESHOLDS = {
+  minWords: 50,
+};
 
-interface OpenAIConfig {
-  model: string;
-  temperature: number;
-  maxTokens: number;
-}
+const PROMPTS = {
+  actionItems: {
+    system:
+      'You are an expert at analyzing meeting transcripts and extracting ONLY the most important, specific, and actionable items. Be extremely selective and avoid generic or repetitive items.',
+    user: `Analyze the following meeting transcript and extract ONLY the most critical action items.
 
-interface PromptTemplate {
-  system: string;
-  user: string;
-}
+STRICT FILTERING RULES:
+1. If transcript is empty/null/less than 50 words → return: {"actionItems": []}
+2. If transcript contains only noise/errors/filler → return: {"actionItems": []}
+3. ONLY extract items that are:
+   - SPECIFIC and actionable (not general discussions)
+   - Have clear deadlines or timeframes
+   - Assigned to specific people
+   - Critical to project success
+4. AVOID:
+   - Generic follow-ups without specifics
+   - Repetitive items with same context
+   - General discussion points
+   - Items without clear ownership
+   - Low-priority administrative tasks
+5. Prioritize items with deadlines and specific assignees
+
+Transcript:
+{transcript}
+
+Return ONLY valid JSON with high-quality action items:
+{
+  "actionItems": [
+    {
+      "description": "Specific, actionable task with clear outcome",
+      "priority": "high|medium|low",
+      "speaker": "Speaker name if mentioned",
+      "assignee": "Specific person assigned"
+    }
+  ]
+}`,
+  },
+  summary: {
+    system:
+      'You are an expert at analyzing meeting transcripts. Only provide summaries and titles when there is substantial, meaningful content. If the transcript is empty, too short, or contains only noise/errors, return null values.',
+    user: `Analyze the following meeting transcript carefully.
+
+IMPORTANT RULES:
+1. If the transcript is empty, null, or contains only noise/errors, return: {"title": null, "summary": null}
+2. If the transcript is less than 50 words, return: {"title": null, "summary": null}
+3. If the transcript contains only filler words, silence indicators, or technical errors, return: {"title": null, "summary": null}
+4. Only generate content if there is substantial, meaningful meeting content
+
+Transcript:
+{transcript}
+
+Return ONLY valid JSON:
+{
+  "title": "Descriptive meeting title (max 10 words)" OR null,
+  "summary": "Concise summary of key points (max 200 words)" OR null
+}`,
+  },
+};
 
 export class OpenAIService {
   private openai: OpenAI;
-  private readonly config: OpenAIConfig;
-  private prompts: Record<string, PromptTemplate>;
 
   constructor() {
     this.openai = new OpenAI({
       apiKey: env.OPENAI_API_KEY,
     });
-
-    this.config = {
-      model: 'gpt-3.5-turbo',
-      temperature: 0.3,
-      maxTokens: 1000,
-    };
-
-    this.prompts = {
-      actionItems: {
-        system: 'You are an expert at analyzing meeting transcripts and extracting actionable items. Be concise and practical.',
-        user: `Analyze the following meeting transcript and extract action items. 
-For each action item, provide:
-- A clear, actionable description
-- Priority level (high, medium, low) based on urgency and importance
-- Speaker identification if mentioned
-
-Transcript:
-{transcript}
-
-Return the action items in JSON format:
-{
-  "actionItems": [
-    {
-      "description": "Clear action item description",
-      "priority": "high|medium|low",
-      "speaker": "Speaker name or number if mentioned",
-      "assignee": "Person assigned if mentioned"
-    }
-  ]
-}`,
-      },
-      summary: {
-        system: 'You are an expert at summarizing meeting content. Be concise and highlight key points.',
-        user: `Create a concise summary of the following meeting transcript. 
-Focus on key decisions, main topics discussed, and important outcomes.
-Keep it under 200 words.
-
-Transcript:
-{transcript}`,
-      },
-    };
   }
 
   /**
-   * Make a generic OpenAI API call with error handling
+   * Make OpenAI API call with error handling
    */
-  private async makeOpenAICall(promptType: keyof typeof this.prompts, transcript: string, customConfig?: Partial<OpenAIConfig>): Promise<string> {
-    try {
-      const prompt = this.prompts[promptType];
-      const config = { ...this.config, ...customConfig };
+  private async makeOpenAICall(promptType: keyof typeof PROMPTS, transcript: string, customConfig?: Partial<OpenAIConfig>): Promise<string> {
+    const prompt = PROMPTS[promptType];
+    const config = { ...OPENAI_CONFIG, ...customConfig };
 
-      const response = await this.openai.chat.completions.create({
-        model: config.model,
-        messages: [
-          { role: 'system', content: prompt.system },
-          { role: 'user', content: prompt.user.replace('{transcript}', transcript) },
-        ],
-        temperature: config.temperature,
-        max_tokens: config.maxTokens,
-      });
+    const response = await this.openai.chat.completions.create({
+      model: config.model,
+      messages: [
+        { role: 'system', content: prompt.system },
+        { role: 'user', content: prompt.user.replace('{transcript}', transcript) },
+      ],
+      temperature: config.temperature,
+      max_tokens: config.maxTokens,
+    });
 
-      const content = response.choices[0]?.message?.content;
-      if (!content) {
-        throw new Error(`No response from OpenAI for ${promptType}`);
-      }
-
-      return this.cleanResponseContent(content);
-    } catch (error: any) {
-      this.handleOpenAIError(error, promptType);
-      throw error;
+    const content = response.choices[0]?.message?.content;
+    if (!content) {
+      throw new Error(`No response from OpenAI for ${promptType}`);
     }
+
+    return this.cleanResponseContent(content);
   }
 
   /**
@@ -124,19 +126,6 @@ Transcript:
   }
 
   /**
-   * Handle OpenAI API errors consistently
-   */
-  private handleOpenAIError(error: any, operation: string): void {
-    if (error.status === 429) {
-      console.warn(`⚠️ OpenAI rate limit exceeded. Skipping ${operation}.`);
-      console.warn('💡 Consider upgrading your OpenAI plan or adding billing information.');
-      return;
-    }
-
-    console.error(`Failed to perform ${operation} with OpenAI:`, error);
-  }
-
-  /**
    * Parse JSON response with error handling
    */
   private parseJSONResponse<T>(content: string): T {
@@ -149,9 +138,20 @@ Transcript:
   }
 
   /**
+   * Validate transcript before processing
+   */
+  private isValidTranscript(transcript: string): boolean {
+    return Boolean(transcript && transcript.trim().length >= TRANSCRIPT_THRESHOLDS.minWords);
+  }
+
+  /**
    * Save action items to database
    */
-  private async saveActionItems(meetingId: string, actionItems: ActionItemData[]): Promise<void> {
+  private async saveActionItems(meetingId: string, actionItems: ActionItemUpdateData[], userId: string): Promise<void> {
+    if (actionItems.length === 0) {
+      return;
+    }
+
     const actionItemRepository = AppDataSource.getRepository(ActionItem);
 
     const actionItemsToSave = actionItems.map((item) => ({
@@ -159,115 +159,56 @@ Transcript:
       description: item.description,
       priority: item.priority,
       status: 'pending' as const,
-      assignee: item.assignee || undefined,
+      speaker: item.speaker,
+      createdBy: userId,
     }));
 
     await actionItemRepository.save(actionItemsToSave);
-    console.log(`📋 Saved ${actionItemsToSave.length} action items to database`);
+    console.log(`📋 Saved ${actionItemsToSave.length} action items for meeting ${meetingId}`);
   }
 
-  /**
-   * Extract action items from meeting transcript
-   */
-  async extractActionItems(meetingId: string, transcript: string): Promise<void> {
+  async extractActionItems(meetingId: string, transcript: string, userId: string): Promise<void> {
     try {
-      console.log(`🤖 Extracting action items for meeting: ${meetingId}`);
+      if (!this.isValidTranscript(transcript)) {
+        console.log(`⚠️ Skipping action item extraction for meeting ${meetingId} - transcript too short`);
+        return;
+      }
 
       const response = await this.makeOpenAICall('actionItems', transcript);
       const actionItemsData = this.parseJSONResponse<ActionItemsResponse>(response);
 
-      if (actionItemsData.actionItems && actionItemsData.actionItems.length > 0) {
-        await this.saveActionItems(meetingId, actionItemsData.actionItems);
-        console.log(`✅ Extracted ${actionItemsData.actionItems.length} action items`);
-      } else {
-        console.log('📋 No action items found in transcript');
-      }
-    } catch (error: any) {
-      // Handle rate limit errors gracefully
-      if (error.status === 429) {
-        console.warn('⚠️ Skipping action item extraction due to rate limit');
-        return;
-      }
-
-      console.error('Failed to extract action items:', error);
-      console.warn('⚠️ Action item extraction failed, but meeting was created successfully');
+      await this.saveActionItems(meetingId, actionItemsData.actionItems, userId);
+    } catch {
+      return;
     }
   }
 
-  /**
-   * Generate meeting summary
-   */
-  async generateSummary(transcript: string): Promise<string | null> {
+  async generateSummaryAndTitle(meetingId: string, transcript: string, userId: string): Promise<{ title: string; summary: string } | null> {
     try {
-      console.log('🤖 Generating meeting summary...');
-
-      const summary = await this.makeOpenAICall('summary', transcript, {
-        maxTokens: 300,
-      });
-
-      console.log('✅ Meeting summary generated');
-      return summary;
-    } catch (error: any) {
-      if (error.status === 429) {
-        console.warn('⚠️ Skipping summary generation due to rate limit');
+      if (!this.isValidTranscript(transcript)) {
+        console.log(`Skipping summary generation for meeting ${meetingId} - transcript too short`);
         return null;
       }
 
-      console.error('Failed to generate summary:', error);
+      const response = await this.makeOpenAICall('summary', transcript, {
+        maxTokens: OPENAI_CONFIG.summaryMaxTokens,
+      });
+
+      const { title, summary } = this.parseJSONResponse<SummaryResponse>(response);
+
+      if (title && summary) {
+        const meetingService = new MeetingService();
+        await meetingService.updateMeeting(meetingId, userId, {
+          title,
+          summary,
+        });
+
+        return { title, summary };
+      }
+
       return null;
-    }
-  }
-
-  /**
-   * Extract topics from meeting transcript
-   */
-  async extractTopics(transcript: string): Promise<string[] | null> {
-    try {
-      console.log('🤖 Extracting meeting topics...');
-
-      const topicsPrompt: PromptTemplate = {
-        system: 'You are an expert at identifying key topics from meeting transcripts.',
-        user: `Extract the main topics discussed in this meeting transcript. 
-Return only the topic names as a JSON array of strings.
-
-Transcript:
-{transcript}
-
-Return format:
-{
-  "topics": ["topic1", "topic2", "topic3"]
-}`,
-      };
-
-      // Create a temporary prompts object with topics
-      const tempPrompts = { ...this.prompts, topics: topicsPrompt };
-
-      const response = await this.openai.chat.completions.create({
-        model: this.config.model,
-        messages: [
-          { role: 'system', content: topicsPrompt.system },
-          { role: 'user', content: topicsPrompt.user.replace('{transcript}', transcript) },
-        ],
-        temperature: this.config.temperature,
-        max_tokens: 200,
-      });
-
-      const content = response.choices[0]?.message?.content;
-      if (!content) {
-        throw new Error('No response from OpenAI for topics');
-      }
-
-      const cleanContent = this.cleanResponseContent(content);
-      const topicsData = this.parseJSONResponse<{ topics: string[] }>(cleanContent);
-      console.log('✅ Meeting topics extracted');
-      return topicsData.topics;
     } catch (error: any) {
-      if (error.status === 429) {
-        console.warn('⚠️ Skipping topic extraction due to rate limit');
-        return null;
-      }
-
-      console.error('Failed to extract topics:', error);
+      console.error(`❌ Summary generation failed for meeting ${meetingId}:`, error.message);
       return null;
     }
   }

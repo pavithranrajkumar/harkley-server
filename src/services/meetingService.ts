@@ -1,26 +1,15 @@
-import { Repository, In } from 'typeorm';
+import { Repository, In, FindManyOptions } from 'typeorm';
 import { AppDataSource } from '../config/ormconfig';
 import { Meeting } from '../entities/Meeting';
-import { Transcription } from '../entities/Transcription';
-import { ChatSegment } from '../entities/ChatSegment';
-import { CreateMeetingData, UpdateMeetingData } from '../types/meeting';
+import { CreateMeetingData, MeetingListOptions, MeetingStatus, UpdateMeetingData } from '../types/meeting';
 import { FileUploadService } from './fileUploadService';
-
-interface MeetingListOptions {
-  limit?: number;
-  offset?: number;
-  status?: string;
-}
+import { removeNullValues } from '../utils/common';
 
 export class MeetingService {
   private meetingRepository: Repository<Meeting>;
-  private transcriptionRepository: Repository<Transcription>;
-  private chatSegmentRepository: Repository<ChatSegment>;
 
   constructor() {
     this.meetingRepository = AppDataSource.getRepository(Meeting);
-    this.transcriptionRepository = AppDataSource.getRepository(Transcription);
-    this.chatSegmentRepository = AppDataSource.getRepository(ChatSegment);
   }
 
   /**
@@ -29,7 +18,7 @@ export class MeetingService {
   async createMeeting(data: CreateMeetingData): Promise<Meeting> {
     const meeting = this.meetingRepository.create({
       ...data,
-      status: 'active',
+      status: MeetingStatus.QUEUED,
     });
 
     const savedMeeting = await this.meetingRepository.save(meeting);
@@ -49,20 +38,18 @@ export class MeetingService {
     const { limit = 20, offset = 0, status } = options;
 
     // Build where condition
-    const whereCondition: any = { userId };
-    if (status) {
-      whereCondition.status = status;
-    }
+    const whereCondition = removeNullValues({ userId, status });
 
-    // Simple query without relations - clean separation
-    const queryOptions: any = {
+    // Optimized query with select only needed fields
+    const queryOptions = {
       where: whereCondition,
       order: { createdAt: 'DESC' },
       take: limit,
       skip: offset,
+      select: ['id', 'title', 'duration', 'file_size', 'summary', 'status', 'userId', 'createdAt', 'updatedAt'],
     };
 
-    const [meetings, total] = await this.meetingRepository.findAndCount(queryOptions);
+    const [meetings, total] = await this.meetingRepository.findAndCount(queryOptions as FindManyOptions<Meeting>);
 
     return {
       meetings,
@@ -82,7 +69,6 @@ export class MeetingService {
       return null;
     }
 
-    // Generate signed URL for file access
     if (meeting.file_path) {
       meeting.file_path = await new FileUploadService().generateSignedUrl(meeting.file_path);
     }
@@ -96,6 +82,7 @@ export class MeetingService {
   async updateMeeting(meetingId: string, userId: string, data: UpdateMeetingData): Promise<Meeting | null> {
     const meeting = await this.meetingRepository.findOne({
       where: { id: meetingId, userId },
+      select: ['id'],
     });
 
     if (!meeting) {
@@ -110,13 +97,14 @@ export class MeetingService {
   async deleteMeeting(meetingId: string, userId: string): Promise<boolean> {
     const meeting = await this.meetingRepository.findOne({
       where: { id: meetingId, userId },
+      select: ['id'],
     });
 
     if (!meeting) {
       return false;
     }
 
-    await this.meetingRepository.softDelete(meetingId);
+    await this.meetingRepository.delete(meetingId);
     return true;
   }
 

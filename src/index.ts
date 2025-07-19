@@ -7,6 +7,7 @@ import { sendSuccess, sendError } from './utils/response';
 import { env } from './config/env';
 import { AppDataSource } from './config/ormconfig';
 import routes from './routes';
+import { generalApiLimiter } from './middleware/rateLimit';
 
 const app = express();
 const PORT = env.PORT;
@@ -28,6 +29,9 @@ app.use(cors());
 app.use(morgan('combined'));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
+
+// Apply general rate limiting to all API routes
+app.use('/api', generalApiLimiter);
 
 // Health check endpoint
 app.get('/health', (req, res) => {

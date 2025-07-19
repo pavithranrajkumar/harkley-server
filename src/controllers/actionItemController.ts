@@ -13,17 +13,19 @@ export class ActionItemController {
    */
   static async getActionItems(req: RequestWithUser, res: Response): Promise<void> {
     try {
-      const { meetingId, status, priority, speaker } = req.query;
+      const { status, priority, speaker, meetingId } = req.query;
       const { page, limit, offset } = getPaginationParams(req.query);
+      const userId = getUserId(req);
 
       const actionItemService = new ActionItemService();
       const result = await actionItemService.getActionItems({
-        meetingId: meetingId as string,
         limit,
         offset,
-        status: status as string,
-        priority: priority as string,
-        speaker: speaker as string,
+        status,
+        priority,
+        speaker,
+        createdBy: userId,
+        meetingId,
       });
 
       sendSuccess(
@@ -86,7 +88,7 @@ export class ActionItemController {
    */
   static async updateActionItem(req: RequestWithUser, res: Response): Promise<void> {
     try {
-      const { actionItemId } = req.params;
+      const { id } = req.params;
       const { description, priority, status, speaker, dueDate } = req.body;
 
       const updateData = removeNullValues({
@@ -98,7 +100,7 @@ export class ActionItemController {
       });
 
       const actionItemService = new ActionItemService();
-      const actionItem = await actionItemService.updateActionItem(actionItemId, updateData);
+      const actionItem = await actionItemService.updateActionItem(id, updateData);
 
       if (!actionItem) {
         sendError(res, 'NOT_FOUND', 'Action item not found', 404);
@@ -117,10 +119,10 @@ export class ActionItemController {
    */
   static async deleteActionItem(req: RequestWithUser, res: Response): Promise<void> {
     try {
-      const { actionItemId } = req.params;
+      const { id } = req.params;
 
       const actionItemService = new ActionItemService();
-      const success = await actionItemService.deleteActionItem(actionItemId);
+      const success = await actionItemService.deleteActionItem(id);
 
       if (!success) {
         sendError(res, 'NOT_FOUND', 'Action item not found', 404);

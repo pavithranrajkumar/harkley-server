@@ -1,4 +1,10 @@
 // Meeting service types
+
+export interface MeetingListOptions {
+  limit?: number;
+  offset?: number;
+  status?: string;
+}
 export interface CreateMeetingData {
   title: string;
   duration?: number;
@@ -14,12 +20,18 @@ export interface UpdateMeetingData {
   file_size?: number;
   file_path?: string;
   summary?: string;
-  status?: string;
+  status?: MeetingStatus;
+}
+
+export enum MeetingStatus {
+  QUEUED = 'queued',
+  TRANSCRIBING = 'transcribing',
+  ANALYZING = 'analyzing',
+  COMPLETED = 'completed',
+  FAILED = 'failed',
 }
 
 // Meeting processing status types
-export type ProcessingStatus = 'pending' | 'uploading' | 'processing' | 'transcribing' | 'analyzing' | 'completed' | 'failed';
-
 export interface MeetingWithStatus {
   id: string;
   title: string;
@@ -28,8 +40,6 @@ export interface MeetingWithStatus {
   file_path: string;
   summary?: string;
   status: string;
-  processing_status: ProcessingStatus;
-  processing_error?: string;
   userId: string;
   createdAt: Date;
   updatedAt: Date;

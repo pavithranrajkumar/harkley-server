@@ -13,13 +13,14 @@ export class AuthService {
    */
   static async signup(input: SignupInput): Promise<AuthResponse> {
     try {
+      const { name, email, password } = input;
       // Create user in Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: input.email,
-        password: input.password,
+        email,
+        password,
         options: {
           data: {
-            name: input.name,
+            name,
           },
         },
       });
@@ -43,7 +44,7 @@ export class AuthService {
         user: {
           id: authData.user.id,
           email: authData.user.email!,
-          name: input.name,
+          name,
         },
         token: sessionData.session.access_token,
       };
@@ -57,10 +58,11 @@ export class AuthService {
    */
   static async login(input: LoginInput): Promise<AuthResponse> {
     try {
+      const { email, password } = input;
       // Sign in with Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email: input.email,
-        password: input.password,
+        email,
+        password,
       });
 
       if (authError) {
@@ -78,11 +80,12 @@ export class AuthService {
         throw new Error('Failed to get session');
       }
 
+      const { id, user_metadata } = authData.user;
       return {
         user: {
-          id: authData.user.id,
-          email: authData.user.email!,
-          name: authData.user.user_metadata?.name,
+          id,
+          email,
+          name: user_metadata?.name,
         },
         token: sessionData.session.access_token,
       };

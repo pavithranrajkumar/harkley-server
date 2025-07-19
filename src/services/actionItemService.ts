@@ -2,23 +2,7 @@ import { Repository } from 'typeorm';
 import { AppDataSource } from '../config/ormconfig';
 import { ActionItem } from '../entities/ActionItem';
 import { removeNullValues } from '../utils/common';
-
-interface ActionItemListOptions {
-  meetingId?: string;
-  limit?: number;
-  offset?: number;
-  status?: string;
-  priority?: string;
-  speaker?: string;
-}
-
-interface ActionItemUpdateData {
-  description?: string;
-  priority?: 'high' | 'medium' | 'low';
-  status?: 'pending' | 'in_progress' | 'completed' | 'cancelled';
-  speaker?: string;
-  dueDate?: Date;
-}
+import { ActionItemListOptions, ActionItemUpdateData } from '../types/actionItem';
 
 export class ActionItemService {
   private actionItemRepository: Repository<ActionItem>;
@@ -34,10 +18,11 @@ export class ActionItemService {
     actionItems: ActionItem[];
     total: number;
   }> {
-    const { meetingId, limit = 20, offset = 0, status, priority, speaker } = options;
+    const { meetingId, createdBy, limit = 20, offset = 0, status, priority, speaker } = options;
 
     const whereCondition: any = removeNullValues({
       meetingId,
+      createdBy,
       status,
       priority,
       speaker,
@@ -45,9 +30,13 @@ export class ActionItemService {
 
     const [actionItems, total] = await this.actionItemRepository.findAndCount({
       where: whereCondition,
-      order: { createdAt: 'DESC' },
+      order: {
+        status: 'DESC',
+        createdAt: 'DESC',
+      },
       take: limit,
       skip: offset,
+      select: ['id', 'description', 'status', 'priority', 'dueDate', 'createdAt'],
     });
 
     return {
@@ -79,9 +68,10 @@ export class ActionItemService {
   /**
    * Update an action item
    */
-  async updateActionItem(actionItemId: string, data: ActionItemUpdateData): Promise<ActionItem | null> {
+  async updateActionItem(id: string, data: ActionItemUpdateData): Promise<ActionItem | null> {
     const actionItem = await this.actionItemRepository.findOne({
-      where: { id: actionItemId },
+      where: { id: id },
+      select: ['id'],
     });
 
     if (!actionItem) {
@@ -95,13 +85,11 @@ export class ActionItemService {
   /**
    * Delete an action item
    */
-  async deleteActionItem(actionItemId: string): Promise<boolean> {
+  async deleteActionItem(id: string): Promise<boolean> {
     try {
-      await this.actionItemRepository.delete({ id: actionItemId });
-      console.log(`🗑️ Deleted action item: ${actionItemId}`);
+      await this.actionItemRepository.delete({ id: id });
       return true;
     } catch (error) {
-      console.error('Failed to delete action item:', error);
       return false;
     }
   }

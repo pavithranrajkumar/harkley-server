@@ -5,13 +5,9 @@ import { ChatSegment } from './ChatSegment';
 
 @Entity('transcriptions')
 @Index('IDX_transcriptions_meeting_id', ['meetingId'])
-@Index('IDX_transcriptions_status', ['status'])
 export class Transcription extends BaseEntity {
   @Column({ name: 'meeting_id' })
   meetingId!: string;
-
-  @Column({ default: 'completed' })
-  status!: string;
 
   @Column({ name: 'full_text', type: 'text' })
   fullText!: string;

@@ -18,7 +18,6 @@ export const authenticateUser = async (req: Request, res: Response, next: NextFu
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      console.log('❌ No valid authorization header found');
       sendUnauthorized(res, 'No valid authorization header found');
       return;
     }
@@ -26,17 +25,9 @@ export const authenticateUser = async (req: Request, res: Response, next: NextFu
     const token = authHeader.substring(7); // Remove 'Bearer ' prefix
     console.log('🔑 Token extracted, length:', token.length);
 
-    // Create Supabase client
     const supabaseUrl = env.SUPABASE_URL;
     const supabaseAnonKey = env.SUPABASE_ANON_KEY;
 
-    if (!supabaseUrl || !supabaseAnonKey) {
-      console.error('❌ Supabase configuration missing');
-      sendInternalError(res, 'Authentication configuration error');
-      return;
-    }
-
-    console.log('🏗️ Creating Supabase client...');
     const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
     // Add timeout to prevent hanging
@@ -44,9 +35,6 @@ export const authenticateUser = async (req: Request, res: Response, next: NextFu
       setTimeout(() => reject(new Error('Authentication timeout')), 10000); // 10 second timeout
     });
 
-    console.log('🔍 Verifying token with Supabase...');
-
-    // Use Supabase Auth to verify the token with timeout
     const authPromise = supabase.auth.getUser(token);
 
     const {
@@ -55,24 +43,19 @@ export const authenticateUser = async (req: Request, res: Response, next: NextFu
     } = (await Promise.race([authPromise, timeoutPromise])) as any;
 
     if (error || !user) {
-      console.error('❌ Supabase auth error:', error);
       sendUnauthorized(res, 'Invalid or expired token');
       return;
     }
 
-    console.log('✅ Authentication successful for user:', user.email);
-
-    // Attach user info to request
     req.user = {
       id: user.id,
-      email: user.email || '',
+      email: user.email,
       name: user.user_metadata.name,
       role: user.role,
     };
 
     next();
   } catch (error) {
-    console.error('❌ Authentication error:', error);
     if (error instanceof Error && error.message === 'Authentication timeout') {
       sendInternalError(res, 'Authentication timeout - please try again');
     } else {
@@ -81,21 +64,17 @@ export const authenticateUser = async (req: Request, res: Response, next: NextFu
   }
 };
 
-// Optional: Middleware to check if user is authenticated (for optional routes)
 export const optionalAuth = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      // No token provided, continue without user
       next();
       return;
     }
 
-    // Try to authenticate, but don't fail if it doesn't work
     await authenticateUser(req, res, next);
   } catch {
-    // If authentication fails, continue without user
     next();
   }
 };

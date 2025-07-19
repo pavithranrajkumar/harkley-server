@@ -54,12 +54,13 @@ export class FileUploadService {
       throw new Error(validation.error);
     }
 
+    const { originalname, buffer, mimetype, size } = file;
     // Generate secure file path
-    const filePath = this.generateFilePath(userId, file.originalname);
+    const filePath = this.generateFilePath(userId, originalname);
 
     // Upload to Supabase storage
-    const { error } = await supabase.storage.from(this.BUCKET_NAME).upload(filePath, file.buffer, {
-      contentType: file.mimetype,
+    const { error } = await supabase.storage.from(this.BUCKET_NAME).upload(filePath, buffer, {
+      contentType: mimetype,
       cacheControl: '3600',
       upsert: false, // Prevent overwriting existing files
     });
@@ -74,9 +75,9 @@ export class FileUploadService {
     return {
       fileUrl: urlData.publicUrl,
       filePath: filePath,
-      fileName: file.originalname,
-      fileSize: file.size,
-      mimeType: file.mimetype,
+      fileName: originalname,
+      fileSize: size,
+      mimeType: mimetype,
     };
   }
 

@@ -19,30 +19,22 @@ export class TranscriptionService {
   /**
    * Start transcription for a meeting
    */
-  async startTranscription(meetingId: string, audioUrl: string): Promise<DeepgramResponse<SyncPrerecordedResponse>> {
-    try {
-      console.log(`🎙️ Starting transcription for meeting: ${meetingId}`);
+  async startTranscription(audioUrl: string): Promise<DeepgramResponse<SyncPrerecordedResponse>> {
+    const response = await this.deepgram.listen.prerecorded.transcribeUrl(
+      {
+        url: audioUrl,
+      },
+      {
+        model: 'nova-3',
+        smart_format: true,
+        diarize: true,
+        utterances: true,
+        punctuate: true,
+        summarize: 'v2',
+      }
+    );
 
-      const response = await this.deepgram.listen.prerecorded.transcribeUrl(
-        {
-          url: audioUrl,
-        },
-        {
-          model: 'nova-3',
-          smart_format: true,
-          diarize: true,
-          utterances: true,
-          punctuate: true,
-          summarize: 'v2',
-        }
-      );
-
-      console.log(`✅ Transcription completed for meeting: ${meetingId}`);
-      return response;
-    } catch (error) {
-      console.error('Failed to start transcription:', error);
-      throw error;
-    }
+    return response;
   }
 
   /**
@@ -92,18 +84,16 @@ export class TranscriptionService {
     hasTranscription: boolean;
     wordCount: number;
     confidence: number;
-    status: string;
   }> {
     const transcription = await this.transcriptionRepository.findOne({
       where: { meetingId },
-      select: ['wordCount', 'confidence', 'status'],
+      select: ['wordCount', 'confidence'],
     });
 
     return {
       hasTranscription: !!transcription,
       wordCount: transcription?.wordCount || 0,
       confidence: transcription?.confidence || 0,
-      status: transcription?.status || 'not_found',
     };
   }
 
@@ -154,7 +144,6 @@ export class TranscriptionService {
       // Save transcription to database
       const transcriptionRecord = await this.transcriptionRepository.save({
         meetingId: meetingId,
-        status: 'completed',
         fullText: transcript,
         confidence: Math.round(confidence * 100),
         language: 'en',
@@ -180,11 +169,8 @@ export class TranscriptionService {
         await this.chatSegmentRepository.save(chatSegments);
       }
 
-      console.log(`📝 Processed transcription for meeting: ${meetingId}`);
-      console.log(`📊 Word count: ${wordCount}, Confidence: ${Math.round(confidence * 100)}%`);
-      return { transcript, chatSegments, duration: metadata.duration };
+      return { transcript, chatSegments, duration: Math.round(metadata.duration) };
     } catch (error) {
-      console.error('Failed to process transcription results:', error);
       throw error;
     }
   }
@@ -200,10 +186,8 @@ export class TranscriptionService {
       // Delete transcription
       await this.transcriptionRepository.delete({ id: transcriptionId });
 
-      console.log(`🗑️ Deleted transcription: ${transcriptionId}`);
       return true;
     } catch (error) {
-      console.error('Failed to delete transcription:', error);
       return false;
     }
   }

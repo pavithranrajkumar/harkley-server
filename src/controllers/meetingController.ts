@@ -2,16 +2,15 @@ import { Request, Response } from 'express';
 import { getUserId, RequestWithUser } from '../types/express';
 import { MeetingService } from '../services/meetingService';
 import { FileUploadService } from '../services/fileUploadService';
-import { TranscriptionService } from '../services/transcriptionService';
+import { MeetingProcessingService } from '../services/meetingProcessingService';
 import { sendSuccess, sendError, sendBadRequest } from '../utils/response';
 import { getErrorMessage } from '../utils/error';
 import { getPaginationParams } from '../utils/pagination';
 import { removeNullValues } from '../utils/common';
-import { OpenAIService } from '../services/openAIService';
 
 export class MeetingController {
   /**
-   * Upload recording and create meeting
+   * Upload recording and create meeting with background processing
    */
   static async createMeeting(req: RequestWithUser, res: Response): Promise<void> {
     try {
@@ -27,41 +26,39 @@ export class MeetingController {
       const fileUploadService = new FileUploadService();
       const uploadResult = await fileUploadService.uploadFile(file, userId);
 
-      // Generate simple generic title
-      const draftTitle = 'Untitled Meeting';
-
-      // Create meeting record
+      // Create meeting record with initial status
       const meetingData = {
-        title: draftTitle,
+        title: 'Untitled Meeting',
         file_path: uploadResult.filePath,
         file_size: uploadResult.fileSize,
         userId,
+        status: 'queued',
       };
 
-      const signedUrl = await fileUploadService.generateSignedUrl(uploadResult.filePath);
-      console.log({ signedUrl });
       const meetingService = new MeetingService();
       const meeting = await meetingService.createMeeting(meetingData);
 
-      // Start transcription process
-      const transcriptionService = new TranscriptionService();
-      const transcriptionResponse = await transcriptionService.startTranscription(
-        meeting.id,
-        'https://qycrbgczamjkcrmlneqh.supabase.co/storage/v1/object/sign/meeting-recordings/users/55eb6849-3f56-40f6-8345-799f4c375eaf/meetings/Harkley%20Sample.webm?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV85YWM1YzhmZi1kN2IxLTQ1ZTQtYjlmOC0zZjUwYWQ3YTNhMzUiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJtZWV0aW5nLXJlY29yZGluZ3MvdXNlcnMvNTVlYjY4NDktM2Y1Ni00MGY2LTgzNDUtNzk5ZjRjMzc1ZWFmL21lZXRpbmdzL0hhcmtsZXkgU2FtcGxlLndlYm0iLCJpYXQiOjE3NTI5NDkyOTIsImV4cCI6MTc1MzU1NDA5Mn0.uHK-VC6oxCc9S-2WNV7C1Ykzl_CPE8xYgzDUk2MI1cI'
-      );
-      const { transcript, duration } = await transcriptionService.processTranscriptionResults(meeting.id, transcriptionResponse);
-      await meetingService.updateMeeting(meeting.id, userId, { duration, status: 'processed' });
+      // Generate signed URL for processing
+      const signedUrl = await fileUploadService.generateSignedUrl(uploadResult.filePath);
 
-      // Extract action items using ChatGPT
-      const openAIService = new OpenAIService();
-      await openAIService.extractActionItems(meeting.id, transcript);
+      // Process meeting in background (non-blocking) - start before sending response
+      setImmediate(async () => {
+        try {
+          const processingService = new MeetingProcessingService();
+          await processingService.processMeetingInBackground(meeting.id, signedUrl, userId);
+        } catch (error) {
+          console.error(`❌ Background processing failed for meeting ${meeting.id}:`, error);
+        }
+      });
+
+      // Return success response after starting background processing
       sendSuccess(
         res,
         {
           meetingId: meeting.id,
           fileUrl: uploadResult.fileUrl,
-          processingStatus: 'processing',
-          message: 'Recording uploaded successfully. Transcription is starting in the background.',
+          processingStatus: 'queued',
+          message: 'Recording uploaded successfully. Processing started in background.',
         },
         'Meeting created successfully',
         201
@@ -109,7 +106,7 @@ export class MeetingController {
       const result = await meetingService.getUserMeetings(userId, {
         limit,
         offset,
-        status: status as string,
+        status,
       });
 
       sendSuccess(

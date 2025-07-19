@@ -6,7 +6,7 @@ import { sendValidationError } from '../utils/response';
 /**
  * Middleware to validate UUID route parameters
  */
-export const validateIdParam = (paramName: string = 'id') => {
+export const validateParam = (paramName: string = 'id') => {
   return (req: Request, res: Response, next: NextFunction): void => {
     const id = req.params[paramName];
 

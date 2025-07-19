@@ -11,10 +11,10 @@ export class TranscriptionController {
    */
   static async getTranscriptionByMeeting(req: RequestWithUser, res: Response): Promise<void> {
     try {
-      const { meetingId } = req.params;
+      const { id } = req.params;
 
       const transcriptionService = new TranscriptionService();
-      const transcription = await transcriptionService.getTranscriptionByMeeting(meetingId);
+      const transcription = await transcriptionService.getTranscriptionByMeeting(id);
 
       if (!transcription) {
         sendError(res, 'NOT_FOUND', 'Transcription not found for this meeting', 404);
@@ -33,10 +33,10 @@ export class TranscriptionController {
    */
   static async getTranscriptionById(req: RequestWithUser, res: Response): Promise<void> {
     try {
-      const { transcriptionId } = req.params;
+      const { id } = req.params;
 
       const transcriptionService = new TranscriptionService();
-      const transcription = await transcriptionService.getTranscriptionById(transcriptionId);
+      const transcription = await transcriptionService.getTranscriptionById(id);
 
       if (!transcription) {
         sendError(res, 'NOT_FOUND', 'Transcription not found', 404);
@@ -55,10 +55,10 @@ export class TranscriptionController {
    */
   static async getTranscriptionStats(req: RequestWithUser, res: Response): Promise<void> {
     try {
-      const { meetingId } = req.params;
+      const { id } = req.params;
 
       const transcriptionService = new TranscriptionService();
-      const stats = await transcriptionService.getTranscriptionStats(meetingId);
+      const stats = await transcriptionService.getTranscriptionStats(id);
 
       sendSuccess(res, stats, 'Transcription statistics retrieved successfully');
     } catch (error) {
@@ -72,11 +72,11 @@ export class TranscriptionController {
    */
   static async getChatSegmentsByTranscription(req: RequestWithUser, res: Response): Promise<void> {
     try {
-      const { transcriptionId } = req.params;
+      const { id } = req.params;
       const { page, limit, offset } = getPaginationParams(req.query);
 
       const transcriptionService = new TranscriptionService();
-      const result = await transcriptionService.getChatSegmentsByTranscription(transcriptionId, {
+      const result = await transcriptionService.getChatSegmentsByTranscription(id, {
         limit,
         offset,
       });
@@ -103,10 +103,10 @@ export class TranscriptionController {
    */
   static async deleteTranscription(req: RequestWithUser, res: Response): Promise<void> {
     try {
-      const { transcriptionId } = req.params;
+      const { id } = req.params;
 
       const transcriptionService = new TranscriptionService();
-      const success = await transcriptionService.deleteTranscription(transcriptionId);
+      const success = await transcriptionService.deleteTranscription(id);
 
       if (!success) {
         sendError(res, 'NOT_FOUND', 'Transcription not found', 404);
