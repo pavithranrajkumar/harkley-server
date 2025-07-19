@@ -19,11 +19,25 @@ interface EnvConfig {
 
   // Deepgram
   DEEPGRAM_API_KEY: string;
+
+  // OpenAI
+  OPENAI_API_KEY: string;
+
+  // Server
+  BASE_URL: string;
 }
 
 // Validate required environment variables
 const validateEnv = (): EnvConfig => {
-  const requiredEnvVars = ['SUPABASE_URL', 'SUPABASE_ANON_KEY', 'SUPABASE_SERVICE_ROLE_KEY', 'DATABASE_URL', 'DEEPGRAM_API_KEY'];
+  const requiredEnvVars = [
+    'SUPABASE_URL',
+    'SUPABASE_ANON_KEY',
+    'SUPABASE_SERVICE_ROLE_KEY',
+    'DATABASE_URL',
+    'DEEPGRAM_API_KEY',
+    'OPENAI_API_KEY',
+    'BASE_URL',
+  ];
 
   const missingVars = requiredEnvVars.filter((varName) => !process.env[varName]);
 
@@ -47,6 +61,12 @@ const validateEnv = (): EnvConfig => {
 
     // Deepgram
     DEEPGRAM_API_KEY: process.env.DEEPGRAM_API_KEY!,
+
+    // OpenAI
+    OPENAI_API_KEY: process.env.OPENAI_API_KEY!,
+
+    // Server
+    BASE_URL: process.env.BASE_URL!,
   };
 };
 

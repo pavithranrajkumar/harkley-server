@@ -69,7 +69,7 @@ export class FileUploadService {
     }
 
     // Get public URL
-    const { data: urlData } = supabase.storage.from(this.BUCKET_NAME).getPublicUrl(filePath);
+    const { data: urlData } = supabase.storage.from(this.BUCKET_NAME).getPublicUrl(filePath, {});
 
     return {
       fileUrl: urlData.publicUrl,

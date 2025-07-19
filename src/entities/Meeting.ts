@@ -1,9 +1,13 @@
-import { Entity, Column, OneToMany } from 'typeorm';
+import { Entity, Column, OneToMany, Index } from 'typeorm';
 import { BaseEntity } from './BaseEntity';
 import { Transcription } from './Transcription';
 import { ActionItem } from './ActionItem';
 
 @Entity('meetings')
+@Index('IDX_meetings_user_id', ['userId'])
+@Index('IDX_meetings_user_status', ['userId', 'status'])
+@Index('IDX_meetings_created_at', ['createdAt'])
+@Index('IDX_meetings_user_created', ['userId', 'createdAt'])
 export class Meeting extends BaseEntity {
   @Column()
   title!: string;

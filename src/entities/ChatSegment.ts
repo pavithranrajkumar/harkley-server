@@ -1,8 +1,11 @@
-import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, Column, ManyToOne, JoinColumn, Index } from 'typeorm';
 import { BaseEntity } from './BaseEntity';
 import { Transcription } from './Transcription';
 
 @Entity('chat_segments')
+@Index('IDX_chat_segments_transcription_id', ['transcriptionId'])
+@Index('IDX_chat_segments_start_time', ['startTime'])
+@Index('IDX_chat_segments_transcription_start', ['transcriptionId', 'startTime'])
 export class ChatSegment extends BaseEntity {
   @Column({ name: 'transcription_id' })
   transcriptionId!: string;

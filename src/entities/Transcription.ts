@@ -1,9 +1,11 @@
-import { Entity, Column, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
+import { Entity, Column, ManyToOne, JoinColumn, OneToMany, Index } from 'typeorm';
 import { BaseEntity } from './BaseEntity';
 import { Meeting } from './Meeting';
 import { ChatSegment } from './ChatSegment';
 
 @Entity('transcriptions')
+@Index('IDX_transcriptions_meeting_id', ['meetingId'])
+@Index('IDX_transcriptions_status', ['status'])
 export class Transcription extends BaseEntity {
   @Column({ name: 'meeting_id' })
   meetingId!: string;
